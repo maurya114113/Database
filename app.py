@@ -1,6 +1,6 @@
-from flask import Flask, render_template, request, redirect, session
 import mysql.connector
 from config import db_config
+from flask import Flask, render_template, request, redirect, session
 
 app = Flask(__name__)
 app.secret_key = 'secretkey'
@@ -18,11 +18,18 @@ def login():
         cursor.execute("SELECT * FROM users WHERE username=%s AND password=%s", (username, password))
         user = cursor.fetchone()
 
+        print("Fetched user:", user)  # Debug output
+
         if user:
             session['username'] = user['username']
-            session['role'] = user['role']
+            # Safely get role; if missing, assign default 'user'
+            role = user.get('role')
+            if role is None:
+                session['role'] = 'user'  # default role if missing in DB
+            else:
+                session['role'] = role
 
-            if user['role'] == 'admin':
+            if session['role'] == 'admin':
                 return redirect('/admin')
             else:
                 return redirect('/user')
@@ -33,13 +40,13 @@ def login():
 
 @app.route('/admin')
 def admin_dashboard():
-    if 'username' in session and session['role'] == 'admin':
+    if 'username' in session and session.get('role') == 'admin':
         return render_template('admin_dashboard.html', username=session['username'])
     return redirect('/')
 
 @app.route('/user')
 def user_dashboard():
-    if 'username' in session and session['role'] == 'user':
+    if 'username' in session and session.get('role') == 'user':
         return render_template('user_dashboard.html', username=session['username'])
     return redirect('/')
 
